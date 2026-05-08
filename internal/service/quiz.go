@@ -19,15 +19,17 @@ import (
 type QuizService struct {
 	quizRepo            repo.QuizRepo
 	userRepo            repo.UserRepo
-	leaderboard         *LeaderboardService
+	leaderboardRepo     repo.LeaderboardRepo
+	leaderboardService  *LeaderboardService
 	notificationService *NotificationService
 }
 
-func NewQuizService(quizRepo repo.QuizRepo, userRepo repo.UserRepo, leaderboard *LeaderboardService, notificationService *NotificationService) *QuizService {
+func NewQuizService(quizRepo repo.QuizRepo, userRepo repo.UserRepo, leaderboardRepo repo.LeaderboardRepo, leaderboardService *LeaderboardService, notificationService *NotificationService) *QuizService {
 	return &QuizService{
 		quizRepo:            quizRepo,
 		userRepo:            userRepo,
-		leaderboard:         leaderboard,
+		leaderboardRepo:     leaderboardRepo,
+		leaderboardService:  leaderboardService,
 		notificationService: notificationService,
 	}
 }
@@ -198,8 +200,11 @@ func (s *QuizService) SubmitQuiz(ctx context.Context, userID primitive.ObjectID,
 		return 0, err
 	}
 
+	// Write-through update to Redis leaderboard
+	_ = s.leaderboardRepo.UpdateScore(ctx, userID, newTotalScore)
+
 	// TRIGGER REAL-TIME UPDATE
-	s.leaderboard.BroadcastUpdate()
+	s.leaderboardService.BroadcastUpdate()
 
 	return earnedPoints, nil
 }

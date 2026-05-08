@@ -52,14 +52,18 @@ func NewServer(db *mongo.Database, env *config.Env) *Server {
 	quizRepo := repo.NewQuizRepo(db)
 	commentRepo := repo.NewCommentRepo(db)
 	subscriptionRepo := repo.NewSubscription(db)
+	leaderboardRepo := repo.NewLeaderboardRepo(redisClient)
 
 	// 2. Services
 	wsHub := ws.NewHub(10) // 10 workers for message processing
 	go wsHub.Run()
 	stripeClient := config.NewStripeClient()
-	leaderboardService := service.NewLeaderboardService(userRepo, &wsLeaderboardBroadcaster{hub: wsHub})
+	leaderboardService := service.NewLeaderboardService(userRepo, leaderboardRepo, &wsLeaderboardBroadcaster{hub: wsHub})
 	userService := service.NewUserService(userRepo)
-	quizService := service.NewQuizService(quizRepo, userRepo, leaderboardService, notificationService)
+	quizService := service.NewQuizService(quizRepo, userRepo, leaderboardRepo, leaderboardService, notificationService)
+
+	// Sync leaderboard on startup
+	go leaderboardService.Sync()
 	commentService := service.NewCommentService(commentRepo)
 	subscriptionService := service.NewSubscriptionService(subscriptionRepo, stripeClient, userRepo)
 

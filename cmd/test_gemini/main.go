@@ -15,7 +15,7 @@ func main() {
 		log.Fatalf("Failed to initialize Gemini: %v", err)
 	}
 
-	quizService := service.NewQuizService(nil, nil, nil, nil) // Mock repos for pure generation test
+	quizService := service.NewQuizService(nil, nil, nil, nil, nil) // Mock repos for pure generation test
 
 	quiz, err := quizService.GenerateQuiz(
 		context.Background(),
