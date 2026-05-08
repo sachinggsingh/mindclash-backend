@@ -6,6 +6,7 @@ import (
 
 	"github.com/sachinggsingh/quiz/config"
 	"github.com/sachinggsingh/quiz/internal/api"
+	"github.com/sachinggsingh/quiz/internal/telemetry"
 )
 
 func main() {
@@ -15,6 +16,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to DB: %v", err)
 	}
+
+	// Initialize  Telemetry
+	// Logger
+	telemetry.InitLogger()
+	defer telemetry.SyncLogger()
+
+	// Metrics
+	metricsShutdown := telemetry.InitMetrics()
+	defer metricsShutdown(context.Background())
+
+	// Tracer
+	shutdown, err := telemetry.InitTracer()
+	if err != nil {
+		log.Fatalf("Failed to initialize Tracer: %v", err)
+	}
+	defer shutdown(context.Background())
 
 	// Initialize Gemini
 	if err := config.InitGemini(context.Background(), env.GEMINI_API_KEY, env.GEMINI_MODEL); err != nil {
