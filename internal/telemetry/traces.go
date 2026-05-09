@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"context"
+	"os"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -15,9 +16,14 @@ import (
 func InitTracer() (func(context.Context) error, error) {
 	ctx := context.Background()
 
+	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if endpoint == "" {
+		endpoint = "localhost:4318"
+	}
+
 	exporter, err := otlptracehttp.New(
 		ctx,
-		otlptracehttp.WithEndpoint("localhost:4318"), // Default OTLP HTTP endpoint
+		otlptracehttp.WithEndpoint(endpoint), // Configurable OTLP HTTP endpoint
 		otlptracehttp.WithInsecure(),
 	)
 	if err != nil {

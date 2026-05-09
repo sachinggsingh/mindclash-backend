@@ -73,6 +73,7 @@ func (h *QuizHandler) GenerateQuiz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	telemetry.LogWithTrace(ctx).Info("quiz generated successfully", zap.Any("quiz", generatedQuiz))
+	telemetry.QuizGeneratedCounter.Add(ctx, 1)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(generatedQuiz)
@@ -97,6 +98,7 @@ func (h *QuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	telemetry.LogWithTrace(ctx).Info("quiz created successfully", zap.Any("quiz", created))
+	telemetry.QuizCreatedCounter.Add(ctx, 1)
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(created)
 }
@@ -248,6 +250,8 @@ func (h *QuizHandler) SubmitQuizResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	telemetry.QuizSubmittedCounter.Add(ctx, 1)
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -300,6 +304,7 @@ func (h *QuizHandler) SubmitQuiz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	telemetry.LogWithTrace(ctx).Info("quiz submitted successfully", zap.Int("score", score))
+	telemetry.QuizSubmittedCounter.Add(ctx, 1)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]int{"score": score})
 }

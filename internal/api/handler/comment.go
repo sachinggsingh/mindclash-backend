@@ -74,6 +74,7 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	telemetry.CommentCreatedCounter.Add(ctx, 1)
 	json.NewEncoder(w).Encode(comment)
 }
 

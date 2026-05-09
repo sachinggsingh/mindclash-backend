@@ -69,7 +69,7 @@ quiz-backend/
 2. **Configure Environment Variables**:
    Create a `.env` file in the root directory:
    ```env
-   PORT=8080
+   PORT=3003
    MONGO_URI=your_mongodb_connection_string
    DB_NAME=quiz_db
    JWT_KEY=your_secret_key

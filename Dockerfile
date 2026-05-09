@@ -21,6 +21,6 @@ USER appuser
 
 COPY --from=builder /app/mindclash /app/mindclash
 
-EXPOSE 8080
+EXPOSE 3003
 
 CMD ["./mindclash"]

@@ -40,7 +40,12 @@ func LoadEnv() *Env {
 		}
 		port := os.Getenv("PORT")
 		if port == "" {
-			log.Println("PORT not set in environment, using default 8080")
+			log.Println("PORT not set in environment, using default :3003")
+			port = "3003"
+		}
+		// Ensure port has a colon prefix if it's just a number
+		if port != "" && port[0] != ':' {
+			port = ":" + port
 		}
 		mongo_url := os.Getenv("MONGO_URI")
 		if mongo_url == "" {

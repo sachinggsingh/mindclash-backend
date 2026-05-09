@@ -12,9 +12,9 @@ import (
 	"github.com/sachinggsingh/quiz/internal/api/handler"
 	"github.com/sachinggsingh/quiz/internal/repo"
 	"github.com/sachinggsingh/quiz/internal/service"
+	"github.com/sachinggsingh/quiz/internal/telemetry"
 	"github.com/sachinggsingh/quiz/internal/utils"
 	"github.com/sachinggsingh/quiz/internal/ws"
-	"github.com/sachinggsingh/quiz/internal/telemetry"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
@@ -147,7 +147,7 @@ func NewServer(db *mongo.Database, env *config.Env) *Server {
 	return &Server{
 		httpServer: &http.Server{
 			Handler: c.Handler(r),
-			Addr:    ":8080",
+			Addr:    env.PORT,
 			// Timeouts are disabled or handled specifically to support WebSockets
 			WriteTimeout: 0,
 			ReadTimeout:  0,
@@ -156,7 +156,7 @@ func NewServer(db *mongo.Database, env *config.Env) *Server {
 }
 
 func (s *Server) Run() error {
-	fmt.Println("Server is running on port 8080")
+	fmt.Printf("Server is running on %s\n", s.httpServer.Addr)
 	return s.httpServer.ListenAndServe()
 }
 

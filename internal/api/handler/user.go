@@ -138,6 +138,7 @@ func (h *RestHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	span.SetAttributes(attribute.String("user.id", userIDHex))
+	telemetry.UserProfileFetchCounter.Add(ctx, 1)
 
 	user, err := h.userService.GetProfile(ctx, userID)
 	if err != nil {
@@ -180,6 +181,8 @@ func (h *RestHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	// Set new access token cookie (long-lived)
 	utils.SetCookie(w, utils.AccessTokenCookieName, accessToken, 7*24*60*60) // 7 days
 
+	telemetry.TokenRefreshCounter.Add(ctx, 1)
+
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
 		"message":      "Token refreshed successfully",
@@ -196,6 +199,7 @@ func (h *RestHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	utils.ClearCookie(w, utils.RefreshTokenCookieName)
 
 	telemetry.LogWithTrace(ctx).Info("user logged out")
+	telemetry.UserLogoutCounter.Add(ctx, 1)
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
