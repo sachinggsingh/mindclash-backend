@@ -24,14 +24,22 @@ func main() {
 
 	// Metrics
 	metricsShutdown := telemetry.InitMetrics()
-	defer metricsShutdown(context.Background())
+	defer func() {
+		if err := metricsShutdown(context.Background()); err != nil {
+			log.Println(err)
+		}
+	}()
 
 	// Tracer
 	shutdown, err := telemetry.InitTracer()
 	if err != nil {
 		log.Fatalf("Failed to initialize Tracer: %v", err)
 	}
-	defer shutdown(context.Background())
+	defer func() {
+		if err := shutdown(context.Background()); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	// Initialize Gemini
 	if err := config.InitGemini(context.Background(), env.GEMINI_API_KEY, env.GEMINI_MODEL); err != nil {

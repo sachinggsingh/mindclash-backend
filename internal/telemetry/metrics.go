@@ -7,7 +7,8 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 
-	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/metric"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 
 	"go.opentelemetry.io/otel/sdk/resource"
 
@@ -15,6 +16,11 @@ import (
 )
 
 var Meter = otel.Meter("quiz-backend")
+
+var (
+	UserRegistrationCounter, _ = Meter.Int64Counter("user_registrations_total", metric.WithDescription("Total number of user registrations"))
+	UserLoginCounter, _        = Meter.Int64Counter("user_logins_total", metric.WithDescription("Total number of user logins"))
+)
 
 func InitMetrics() func(context.Context) error {
 
@@ -41,10 +47,10 @@ func InitMetrics() func(context.Context) error {
 		log.Fatal(err)
 	}
 
-	provider := metric.NewMeterProvider(
-		metric.WithResource(resource),
-		metric.WithReader(
-			metric.NewPeriodicReader(exporter),
+	provider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(resource),
+		sdkmetric.WithReader(
+			sdkmetric.NewPeriodicReader(exporter),
 		),
 	)
 

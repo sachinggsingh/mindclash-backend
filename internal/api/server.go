@@ -14,7 +14,9 @@ import (
 	"github.com/sachinggsingh/quiz/internal/service"
 	"github.com/sachinggsingh/quiz/internal/utils"
 	"github.com/sachinggsingh/quiz/internal/ws"
+	"github.com/sachinggsingh/quiz/internal/telemetry"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
 type Server struct {
@@ -102,6 +104,8 @@ func NewServer(db *mongo.Database, env *config.Env) *Server {
 
 	// 4. Router
 	r := mux.NewRouter()
+	r.Use(otelmux.Middleware("quiz-backend"))
+	r.Use(telemetry.RequestLogger)
 
 	// REST Routes
 	r.HandleFunc("/", HiFromBackendServer)
