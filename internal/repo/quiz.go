@@ -6,10 +6,15 @@ import (
 	"time"
 
 	"github.com/sachinggsingh/quiz/internal/model"
+	"github.com/sachinggsingh/quiz/internal/telemetry"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"go.uber.org/zap"
 )
 
 type QuizRepo interface {
@@ -31,6 +36,12 @@ func NewQuizRepo(db *mongo.Database) *quizRepo {
 }
 
 func (r *quizRepo) Create(ctx context.Context, quiz *model.Quiz) error {
+	ctx, span := otel.Tracer("repo").Start(ctx, "QuizRepo.Create")
+	defer span.End()
+
+	start := time.Now()
+	telemetry.DBQueryCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "create"), attribute.String("collection", "quizzes")))
+
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -46,7 +57,19 @@ func (r *quizRepo) Create(ctx context.Context, quiz *model.Quiz) error {
 		}
 	}
 	_, err := r.collection.InsertOne(ctx, quiz)
-	return err
+
+	duration := time.Since(start).Seconds()
+	telemetry.DBQueryDuration.Record(ctx, duration, metric.WithAttributes(attribute.String("operation", "create"), attribute.String("collection", "quizzes")))
+
+	if err != nil {
+		span.RecordError(err)
+		telemetry.DBErrorCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "create"), attribute.String("collection", "quizzes")))
+		telemetry.LogWithTrace(ctx).Error("DB Error: QuizRepo.Create", zap.Error(err))
+		return err
+	}
+
+	telemetry.LogWithTrace(ctx).Info("DB Success: QuizRepo.Create", zap.String("quiz_id", quiz.ID.Hex()))
+	return nil
 }
 
 func (r *quizRepo) FindByID(ctx context.Context, quiz_id primitive.ObjectID) (*model.Quiz, error) {

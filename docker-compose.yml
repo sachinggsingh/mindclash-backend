@@ -5,7 +5,7 @@ services:
     ports:
       - "3003:3003"
     env_file:
-      - ./.env
+      - .env
     environment:
       - MONGO_URI=mongodb://mongodb:27017/quiz
       - REDIS_HOST=redis
@@ -17,9 +17,82 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - backend
     restart: always
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.101.0
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./monitoring/otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888" 
+      - "13133:13133" 
+    depends_on:
+      - prometheus
+      - loki
+      - jaeger
+    networks:
+      - backend
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/console_templates"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - backend
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: grafana
+    ports:
+      - "3004:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - backend
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: loki
+    user: "0"
+    command: ["-config.file=/etc/loki-config.yaml"]
+    volumes:
+      - ./monitoring/loki-config.yaml:/etc/loki-config.yaml
+      - loki_data:/data/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - backend
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: jaeger
+    ports:
+      - "16686:16686"
+    networks:
+      - backend
 
   mongodb:
     image: mongo:latest
@@ -64,6 +137,9 @@ services:
 volumes:
   redis_data:
   mongo_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
 
 networks:
   backend:

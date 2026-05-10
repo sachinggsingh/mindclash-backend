@@ -28,6 +28,10 @@ var (
 	QuizCreatedCounter, _      = Meter.Int64Counter("quizzes_created_total", metric.WithDescription("Total number of quizzes created manually"))
 	QuizSubmittedCounter, _    = Meter.Int64Counter("quiz_submissions_total", metric.WithDescription("Total number of quiz submissions"))
 	CommentCreatedCounter, _   = Meter.Int64Counter("comments_created_total", metric.WithDescription("Total number of comments created"))
+
+	DBQueryCounter, _  = Meter.Int64Counter("db_queries_total", metric.WithDescription("Total number of database queries"))
+	DBErrorCounter, _  = Meter.Int64Counter("db_errors_total", metric.WithDescription("Total number of database errors"))
+	DBQueryDuration, _ = Meter.Float64Histogram("db_query_duration_seconds", metric.WithDescription("Duration of database queries in seconds"))
 )
 
 func InitMetrics() func(context.Context) error {

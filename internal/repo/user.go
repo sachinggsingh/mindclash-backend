@@ -5,10 +5,15 @@ import (
 	"time"
 
 	"github.com/sachinggsingh/quiz/internal/model"
+	"github.com/sachinggsingh/quiz/internal/telemetry"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"go.uber.org/zap"
 )
 
 type UserRepo interface {
@@ -57,6 +62,12 @@ func (r *userRepoImpl) InitIndexes(ctx context.Context) error {
 }
 
 func (r *userRepoImpl) Create(ctx context.Context, user *model.User) error {
+	ctx, span := otel.Tracer("repo").Start(ctx, "UserRepo.Create")
+	defer span.End()
+
+	start := time.Now()
+	telemetry.DBQueryCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "create"), attribute.String("collection", "users")))
+
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -68,7 +79,19 @@ func (r *userRepoImpl) Create(ctx context.Context, user *model.User) error {
 	user.Activity = make(map[string]int)
 	user.CompletedQuizIDs = make([]primitive.ObjectID, 0)
 	_, err := r.collection.InsertOne(ctx, user)
-	return err
+
+	duration := time.Since(start).Seconds()
+	telemetry.DBQueryDuration.Record(ctx, duration, metric.WithAttributes(attribute.String("operation", "create"), attribute.String("collection", "users")))
+
+	if err != nil {
+		span.RecordError(err)
+		telemetry.DBErrorCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "create"), attribute.String("collection", "users")))
+		telemetry.LogWithTrace(ctx).Error("DB Error: UserRepo.Create", zap.Error(err))
+		return err
+	}
+
+	telemetry.LogWithTrace(ctx).Info("DB Success: UserRepo.Create", zap.String("user_id", user.ID.Hex()))
+	return nil
 }
 func (r *userRepoImpl) UpdateRefreshToken(ctx context.Context, userID primitive.ObjectID, refreshToken string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -87,14 +110,33 @@ func (r *userRepoImpl) UpdateRefreshToken(ctx context.Context, userID primitive.
 
 // returns the array of details of the user
 func (r *userRepoImpl) FindByEmail(ctx context.Context, email string) (*model.User, error) {
+	ctx, span := otel.Tracer("repo").Start(ctx, "UserRepo.FindByEmail")
+	defer span.End()
+
+	start := time.Now()
+	telemetry.DBQueryCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "find_by_email"), attribute.String("collection", "users")))
+
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	var user model.User
 	err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+
+	duration := time.Since(start).Seconds()
+	telemetry.DBQueryDuration.Record(ctx, duration, metric.WithAttributes(attribute.String("operation", "find_by_email"), attribute.String("collection", "users")))
+
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			telemetry.LogWithTrace(ctx).Debug("DB: User not found by email", zap.String("email", email))
+			return nil, err
+		}
+		span.RecordError(err)
+		telemetry.DBErrorCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "find_by_email"), attribute.String("collection", "users")))
+		telemetry.LogWithTrace(ctx).Error("DB Error: UserRepo.FindByEmail", zap.Error(err), zap.String("email", email))
 		return nil, err
 	}
+
+	telemetry.LogWithTrace(ctx).Debug("DB Success: UserRepo.FindByEmail", zap.String("user_id", user.ID.Hex()))
 	return &user, nil
 }
 
